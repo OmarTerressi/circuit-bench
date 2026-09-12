@@ -2,7 +2,7 @@
 
 A six-instrument calculator panel for electrical engineering fundamentals, built as a single self-contained web page — no build step, no dependencies, no server.
 
-**[https://omarterressi.github.io/circuit-bench/](#)** — enable GitHub Pages on this repo (see below) and put the link here.
+**[Live demo](https://omarterressi.github.io/circuit-bench/)** 
 
 ## Instruments
 

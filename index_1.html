@@ -1,0 +1,918 @@
+<title>Circuit Bench</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Tokens ---------- */
+  :root{
+    --bg:#eef1ec;
+    --surface:#ffffff;
+    --surface-2:#e2e7dd;
+    --ink:#16211c;
+    --ink-muted:#5b6a60;
+    --line:#d3d9cc;
+    --accent:#b96a26;
+    --accent-ink:#fffaf3;
+    --accent-2:#2f7a4d;
+    --danger:#a8442e;
+    --radius:4px;
+    --readout-bg:#0d1712;
+    --readout-fg:#57d98a;
+    --readout-fg-dim:#2c5f42;
+    --readout-line:#1c2f22;
+    --shadow:0 1px 2px rgba(22,33,28,.08), 0 10px 28px -16px rgba(22,33,28,.28);
+    --font-display:'Archivo', 'Arial Narrow', sans-serif;
+    --font-body:'Source Sans 3', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1613;
+      --surface:#16211c;
+      --surface-2:#1c2a22;
+      --ink:#e8ece5;
+      --ink-muted:#95a599;
+      --line:#293830;
+      --accent:#e2953f;
+      --accent-ink:#16211c;
+      --accent-2:#5fc98a;
+      --danger:#e2846f;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 32px -18px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1613;
+    --surface:#16211c;
+    --surface-2:#1c2a22;
+    --ink:#e8ece5;
+    --ink-muted:#95a599;
+    --line:#293830;
+    --accent:#e2953f;
+    --accent-ink:#16211c;
+    --accent-2:#5fc98a;
+    --danger:#e2846f;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 32px -18px rgba(0,0,0,.65);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:var(--font-display); text-wrap:balance; margin:0; }
+  ::selection{ background:var(--accent); color:var(--accent-ink); }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+  button{ font:inherit; color:inherit; }
+  input, select{ font:inherit; }
+
+  .tabular{ font-variant-numeric:tabular-nums; }
+
+  /* ---------- Shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:248px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width:860px){
+    .shell{ grid-template-columns:1fr; }
+  }
+
+  /* ---------- Sidebar ---------- */
+  .rail{
+    background:var(--surface);
+    border-right:1px solid var(--line);
+    padding:22px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  @media (max-width:860px){
+    .rail{ border-right:none; border-bottom:1px solid var(--line); }
+  }
+  .brand{ display:flex; align-items:center; gap:10px; padding:0 4px; }
+  .brand-mark{
+    width:30px; height:30px; flex:none;
+    border-radius:6px;
+    background:
+      linear-gradient(135deg, var(--accent), var(--accent-2));
+    position:relative;
+  }
+  .brand-mark svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .brand-name{ font-family:var(--font-display); font-weight:800; font-size:16.5px; letter-spacing:.2px; }
+  .brand-sub{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); letter-spacing:.06em; text-transform:uppercase; margin-top:1px; }
+
+  .nav{ display:flex; flex-direction:column; gap:4px; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    background:transparent; border:1px solid transparent; text-align:left;
+    padding:9px 10px; border-radius:var(--radius); cursor:pointer;
+    color:var(--ink);
+  }
+  .nav-item:hover{ background:var(--surface-2); }
+  .nav-item[aria-current="true"]{
+    background:var(--surface-2);
+    border-color:var(--line);
+  }
+  .nav-badge{
+    font-family:var(--font-mono); font-size:11px; font-weight:600;
+    color:var(--accent);
+    background:color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius:3px; padding:3px 6px; min-width:40px; text-align:center; flex:none;
+    letter-spacing:.01em;
+  }
+  .nav-label{ font-size:13.5px; font-weight:600; }
+  .nav-item[aria-current="true"] .nav-label{ color:var(--ink); }
+
+  .rail-foot{ margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .theme-toggle{
+    display:flex; gap:2px; background:var(--surface-2); border:1px solid var(--line);
+    border-radius:99px; padding:2px;
+  }
+  .theme-toggle button{
+    border:none; background:transparent; padding:5px 9px; border-radius:99px;
+    font-size:11px; font-family:var(--font-mono); color:var(--ink-muted); cursor:pointer;
+  }
+  .theme-toggle button[aria-pressed="true"]{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+
+  /* ---------- Main ---------- */
+  .main{ padding:30px 34px 60px; max-width:980px; }
+  @media (max-width:640px){ .main{ padding:22px 16px 48px; } }
+
+  .tool-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
+  .tool-eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); display:flex; align-items:center; gap:7px; margin-bottom:6px;
+  }
+  .led{
+    width:7px; height:7px; border-radius:50%; background:var(--accent-2);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent-2) 20%, transparent);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce){ .led{ animation:none; } }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
+  .tool-title{ font-size:25px; font-weight:800; }
+  .tool-blurb{ color:var(--ink-muted); max-width:56ch; margin-top:6px; font-size:14px; }
+
+  .grid{ display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start; }
+  @media (max-width:760px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:18px 18px 20px;
+  }
+  .card + .card{ margin-top:14px; }
+  .card-label{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--ink-muted); margin-bottom:14px; display:block;
+  }
+
+  .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+  .field:last-child{ margin-bottom:0; }
+  .field label{ font-size:12.5px; font-weight:600; color:var(--ink-muted); }
+  .field-row{ display:flex; gap:8px; }
+  .field-row input{ flex:1; min-width:0; }
+  .field-row select{ flex:none; width:96px; }
+
+  input[type="number"], input[type="text"], select{
+    background:var(--bg); border:1px solid var(--line); border-radius:var(--radius);
+    color:var(--ink); padding:9px 10px; font-family:var(--font-mono); font-size:14px;
+    width:100%;
+  }
+  select{ cursor:pointer; }
+  input[type="number"]::-webkit-inner-spin-button{ opacity:.5; }
+
+  .segmented{ display:flex; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  .segmented button{
+    flex:1; border:none; background:var(--bg); padding:8px 10px; font-size:12.5px; font-weight:600;
+    cursor:pointer; color:var(--ink-muted); border-right:1px solid var(--line);
+  }
+  .segmented button:last-child{ border-right:none; }
+  .segmented button[aria-pressed="true"]{ background:var(--accent); color:var(--accent-ink); }
+
+  .btn{
+    border:1px solid var(--line); background:var(--surface-2); border-radius:var(--radius);
+    padding:8px 12px; font-size:12.5px; font-weight:600; cursor:pointer; color:var(--ink);
+  }
+  .btn:hover{ border-color:var(--accent); }
+  .btn-remove{ border:1px solid var(--line); background:transparent; color:var(--danger); border-radius:var(--radius); width:32px; flex:none; cursor:pointer; }
+
+  /* Readout (instrument LCD, deliberately fixed colors in both themes) */
+  .readout{
+    background:var(--readout-bg); border-radius:var(--radius); padding:18px 18px 16px;
+    box-shadow:var(--shadow); border:1px solid var(--readout-line);
+    position:sticky; top:20px;
+  }
+  .readout-label{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--readout-fg-dim); display:flex; justify-content:space-between; margin-bottom:10px;
+  }
+  .readout-primary{
+    font-family:var(--font-mono); color:var(--readout-fg); font-size:34px; font-weight:600;
+    line-height:1.1; word-break:break-word;
+  }
+  .readout-primary .unit{ font-size:16px; color:var(--readout-fg-dim); margin-left:4px; }
+  .readout-formula{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--readout-fg-dim); margin-top:8px;
+  }
+  .readout-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; padding-top:14px;
+    border-top:1px dashed var(--readout-line);
+  }
+  .readout-item dt{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--readout-fg-dim);
+  }
+  .readout-item dd{
+    font-family:var(--font-mono); font-size:15px; color:var(--readout-fg); margin:2px 0 0;
+  }
+
+  .note{ font-size:12px; color:var(--ink-muted); margin-top:12px; line-height:1.5; }
+  .note code{ font-family:var(--font-mono); background:var(--surface-2); padding:1px 5px; border-radius:3px; }
+
+  .resistor-rows{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .resistor-row{ display:flex; gap:8px; align-items:center; }
+
+  /* Resistor color-code illustration */
+  .resistor-fig{ display:flex; justify-content:center; padding:6px 0 4px; }
+  .resistor-fig svg{ width:100%; max-width:280px; height:auto; }
+
+  .band-picker{ display:grid; grid-template-columns:1fr; gap:12px; }
+  .band-field{ display:flex; align-items:center; gap:10px; }
+  .band-field label{ font-size:12px; font-weight:600; color:var(--ink-muted); width:74px; flex:none; }
+  .swatch{
+    width:20px; height:20px; border-radius:4px; border:1px solid var(--line); flex:none;
+  }
+  .band-field select{ flex:1; }
+
+  footer.page-foot{
+    margin-top:30px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--ink-muted); display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+</style>
+
+<div class="shell">
+  <nav class="rail" aria-label="Instrument selector">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 30 30"><path d="M6 15h4l2-6 4 12 2-6h6" fill="none" stroke="#0d1712" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <div>
+        <div class="brand-name">Circuit&nbsp;Bench</div>
+        <div class="brand-sub">By Omar Terressi</div>
+      </div>
+    </div>
+
+    <div class="nav" id="nav" role="tablist" aria-label="Tools"></div>
+
+    <div class="rail-foot">
+      <span class="brand-sub" style="margin:0;">Display</span>
+      <div class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="system" aria-pressed="true">Auto</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Theme handling ---------------- */
+  var root = document.documentElement;
+  var savedTheme = null;
+  try { savedTheme = localStorage.getItem('cb-theme'); } catch(e){}
+  function applyTheme(choice){
+    if (choice === 'light') root.setAttribute('data-theme','light');
+    else if (choice === 'dark') root.setAttribute('data-theme','dark');
+    else root.removeAttribute('data-theme');
+    document.querySelectorAll('[data-theme-choice]').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === choice));
+    });
+    try { localStorage.setItem('cb-theme', choice); } catch(e){}
+  }
+  document.querySelectorAll('[data-theme-choice]').forEach(function(b){
+    b.addEventListener('click', function(){ applyTheme(b.getAttribute('data-theme-choice')); });
+  });
+  applyTheme(savedTheme || 'system');
+
+  /* ---------------- Number / unit helpers ---------------- */
+  var PREFIXES = [
+    {exp:12,sym:'T'},{exp:9,sym:'G'},{exp:6,sym:'M'},{exp:3,sym:'k'},
+    {exp:0,sym:''},{exp:-3,sym:'m'},{exp:-6,sym:'µ'},{exp:-9,sym:'n'},{exp:-12,sym:'p'}
+  ];
+  function formatSI(value, unit){
+    if (value === null || value === undefined || !isFinite(value)) return '—';
+    var sign = value < 0 ? '-' : '';
+    var v = Math.abs(value);
+    if (v === 0) return '0 ' + unit;
+    var chosen = PREFIXES[4];
+    for (var i=0;i<PREFIXES.length;i++){
+      if (v >= Math.pow(10, PREFIXES[i].exp)) { chosen = PREFIXES[i]; break; }
+    }
+    var scaled = v / Math.pow(10, chosen.exp);
+    var decimals = scaled >= 100 ? 1 : (scaled >= 10 ? 2 : 3);
+    var str = scaled.toFixed(decimals).replace(/\.?0+$/,'');
+    return sign + str + ' ' + chosen.sym + unit;
+  }
+  function num(el){
+    var v = parseFloat(el.value);
+    return isFinite(v) ? v : NaN;
+  }
+  function unitScale(selectEl, table){
+    return table[selectEl.value] !== undefined ? table[selectEl.value] : 1;
+  }
+  var UNITS = {
+    R: {'mΩ':1e-3, 'Ω':1, 'kΩ':1e3, 'MΩ':1e6},
+    V: {'mV':1e-3, 'V':1, 'kV':1e3},
+    I: {'µA':1e-6, 'mA':1e-3, 'A':1},
+    C: {'pF':1e-12, 'nF':1e-9, 'µF':1e-6, 'mF':1e-3, 'F':1},
+    L: {'nH':1e-9, 'µH':1e-6, 'mH':1e-3, 'H':1},
+    F: {'Hz':1, 'kHz':1e3, 'MHz':1e6}
+  };
+  function unitOptions(kind, selected){
+    var opts = Object.keys(UNITS[kind]);
+    return opts.map(function(o){ return '<option value="'+o+'"'+(o===selected?' selected':'')+'>'+o+'</option>'; }).join('');
+  }
+
+  /* ---------------- Small DOM helpers ---------------- */
+  function el(tag, attrs, html){
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function(k){ e.setAttribute(k, attrs[k]); });
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  }
+  function field(labelText, innerHTML){
+    var wrap = el('div', {class:'field'});
+    var label = el('label', {}, labelText);
+    wrap.appendChild(label);
+    var row = el('div', {class:'field-row'}, innerHTML);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  /* ================= Tool definitions ================= */
+  var TOOLS = [
+    { id:'ohm', badge:'V=IR', label:"Ohm's Law & Power", blurb:"Solve for voltage, current or resistance from the other two, with power derived automatically.", build: buildOhm },
+    { id:'divider', badge:'÷V', label:'Voltage Divider', blurb:'Find output voltage, branch current and resistor dissipation for a two-resistor divider.', build: buildDivider },
+    { id:'network', badge:'ΣΩ', label:'Resistor Network', blurb:'Total any list of resistors wired in series or in parallel.', build: buildNetwork },
+    { id:'reactance', badge:'Xc/XL', label:'Reactance & Timing', blurb:'Capacitive and inductive reactance, LC resonance and RC time constant.', build: buildReactance },
+    { id:'threephase', badge:'3~', label:'Three-Phase Power', blurb:'Real and apparent power for a balanced three-phase load, star or delta.', build: buildThreePhase },
+    { id:'colorcode', badge:'4/5', label:'Resistor Color Code', blurb:'Decode 4-band or 5-band resistor markings into a resistance value.', build: buildColorCode }
+  ];
+
+  var navEl = document.getElementById('nav');
+  var mainEl = document.getElementById('main');
+
+  TOOLS.forEach(function(t){
+    var b = el('button', {class:'nav-item', role:'tab', 'aria-current':'false', type:'button'},
+      '<span class="nav-badge">'+t.badge+'</span><span class="nav-label">'+t.label+'</span>');
+    b.addEventListener('click', function(){ selectTool(t.id); });
+    t.navEl = b;
+    navEl.appendChild(b);
+  });
+
+  function selectTool(id){
+    var tool = TOOLS.filter(function(t){ return t.id === id; })[0];
+    if (!tool) return;
+    TOOLS.forEach(function(t){ t.navEl.setAttribute('aria-current', String(t.id===id)); });
+    mainEl.innerHTML = '';
+
+    var head = el('div', {class:'tool-head'});
+    head.appendChild(el('div', {},
+      '<div class="tool-eyebrow"><span class="led" aria-hidden="true"></span>Instrument '+ (TOOLS.indexOf(tool)+1) +' of '+TOOLS.length+'</div>'+
+      '<div class="tool-title">'+tool.label+'</div>'+
+      '<div class="tool-blurb">'+tool.blurb+'</div>'
+    ));
+    mainEl.appendChild(head);
+
+    var grid = el('div', {class:'grid'});
+    var inputsCol = el('div', {class:'inputs-col'});
+    var readoutCol = el('div', {class:'readout-col'});
+    grid.appendChild(inputsCol);
+    grid.appendChild(readoutCol);
+    mainEl.appendChild(grid);
+
+    var foot = el('footer', {class:'page-foot'},
+      '<span>Circuit Bench, built by Omar Terressi — formulas verified against standard EE references.</span><span>All calculations run locally in your browser.</span>');
+    mainEl.appendChild(foot);
+
+    tool.build(inputsCol, readoutCol);
+    try { localStorage.setItem('cb-tool', id); } catch(e){}
+  }
+
+  function readout(container, opts){
+    container.innerHTML = '';
+    var box = el('div', {class:'readout'});
+    box.innerHTML =
+      '<div class="readout-label"><span>'+opts.label+'</span><span>LIVE</span></div>'+
+      '<div class="readout-primary tabular">'+opts.primary+(opts.unit?'<span class="unit">'+opts.unit+'</span>':'')+'</div>'+
+      (opts.formula ? '<div class="readout-formula">'+opts.formula+'</div>' : '') +
+      (opts.items ? '<dl class="readout-grid">'+opts.items.map(function(it){
+        return '<div class="readout-item"><dt>'+it[0]+'</dt><dd class="tabular">'+it[1]+'</dd></div>';
+      }).join('')+'</dl>' : '');
+    container.appendChild(box);
+    if (opts.note){
+      var n = el('div', {class:'note'});
+      n.innerHTML = opts.note;
+      container.appendChild(n);
+    }
+  }
+
+  /* ---------- 1. Ohm's Law & Power ---------- */
+  function buildOhm(inputsCol, readoutCol){
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Solve for</span>';
+    var seg = el('div', {class:'segmented'},
+      '<button type="button" data-solve="R" aria-pressed="true">Resistance</button>'+
+      '<button type="button" data-solve="I" aria-pressed="false">Current</button>'+
+      '<button type="button" data-solve="V" aria-pressed="false">Voltage</button>');
+    card.appendChild(seg);
+    inputsCol.appendChild(card);
+
+    var card2 = el('div', {class:'card'});
+    card2.innerHTML = '<span class="card-label">Known values</span>';
+    inputsCol.appendChild(card2);
+
+    var solveFor = 'R';
+    seg.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-solve]');
+      if (!btn) return;
+      solveFor = btn.getAttribute('data-solve');
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+      renderInputs();
+    });
+
+    function makeRow(kind, id, labelText, defaultUnit){
+      var input = el('input', {type:'number', step:'any', inputmode:'decimal', id:id, placeholder:'0'});
+      var select = el('select', {id:id+'-unit'}, unitOptions(kind, defaultUnit));
+      var f = field(labelText, '');
+      f.querySelector('.field-row').appendChild(input);
+      f.querySelector('.field-row').appendChild(select);
+      input.addEventListener('input', compute);
+      select.addEventListener('change', compute);
+      return f;
+    }
+
+    function renderInputs(){
+      card2.innerHTML = '<span class="card-label">Known values</span>';
+      if (solveFor !== 'V') card2.appendChild(makeRow('V','v-in','Voltage (V)','V'));
+      if (solveFor !== 'I') card2.appendChild(makeRow('I','i-in','Current (I)','mA'));
+      if (solveFor !== 'R') card2.appendChild(makeRow('R','r-in','Resistance (R)','Ω'));
+      compute();
+    }
+
+    function getVal(id, kind){
+      var input = document.getElementById(id);
+      var sel = document.getElementById(id+'-unit');
+      if (!input) return NaN;
+      var v = num(input);
+      if (!isFinite(v)) return NaN;
+      return v * unitScale(sel, UNITS[kind]);
+    }
+
+    function compute(){
+      var V = solveFor==='V' ? null : getVal('v-in','V');
+      var I = solveFor==='I' ? null : getVal('i-in','I');
+      var R = solveFor==='R' ? null : getVal('r-in','R');
+      var resultLabel, resultVal, resultUnit, formula, items = [];
+
+      if (solveFor === 'R'){
+        resultVal = V / I; resultLabel = 'Resistance'; resultUnit=''; formula='R = V ÷ I';
+        if (isFinite(resultVal)) items.push(['Power', formatSI(V*I,'W')]);
+      } else if (solveFor === 'I'){
+        resultVal = V / R; resultLabel = 'Current'; resultUnit=''; formula='I = V ÷ R';
+        if (isFinite(resultVal)) items.push(['Power', formatSI(V*resultVal,'W')]);
+      } else {
+        resultVal = I * R; resultLabel = 'Voltage'; resultUnit=''; formula='V = I × R';
+        if (isFinite(resultVal)) items.push(['Power', formatSI(resultVal*I,'W')]);
+      }
+
+      var unit = solveFor==='R' ? 'Ω' : (solveFor==='I' ? 'A' : 'V');
+      readout(readoutCol, {
+        label: resultLabel,
+        primary: isFinite(resultVal) ? formatSI(resultVal, unit).split(' ')[0] : '—',
+        unit: isFinite(resultVal) ? formatSI(resultVal, unit).split(' ')[1] : '',
+        formula: formula,
+        items: items,
+        note: 'Enter any two of voltage, current and resistance — Circuit Bench solves the third and the dissipated power live as you type.'
+      });
+    }
+
+    renderInputs();
+  }
+
+  /* ---------- 2. Voltage Divider ---------- */
+  function buildDivider(inputsCol, readoutCol){
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Divider values</span>';
+    inputsCol.appendChild(card);
+
+    function row(kind, id, labelText, unit){
+      var input = el('input', {type:'number', step:'any', inputmode:'decimal', id:id, placeholder:'0'});
+      var select = el('select', {id:id+'-unit'}, unitOptions(kind, unit));
+      var f = field(labelText, '');
+      f.querySelector('.field-row').appendChild(input);
+      f.querySelector('.field-row').appendChild(select);
+      input.addEventListener('input', compute);
+      select.addEventListener('change', compute);
+      card.appendChild(f);
+    }
+    row('V','vin','Input voltage (Vin)','V');
+    row('R','r1','R1 (top resistor)','kΩ');
+    row('R','r2','R2 (bottom resistor, across Vout)','kΩ');
+
+    function getVal(id, kind){
+      var v = num(document.getElementById(id));
+      var sel = document.getElementById(id+'-unit');
+      return isFinite(v) ? v*unitScale(sel, UNITS[kind]) : NaN;
+    }
+
+    function compute(){
+      var Vin = getVal('vin','V'), R1 = getVal('r1','R'), R2 = getVal('r2','R');
+      var Vout = Vin * R2 / (R1+R2);
+      var Itot = Vin / (R1+R2);
+      var pieces = formatSI(Vout,'V').split(' ');
+      readout(readoutCol, {
+        label:'Output voltage',
+        primary: isFinite(Vout)?pieces[0]:'—',
+        unit: isFinite(Vout)?pieces[1]:'',
+        formula: 'Vout = Vin × R2 ÷ (R1 + R2)',
+        items: [
+          ['Branch current', formatSI(Itot,'A')],
+          ['P in R1', formatSI(Itot*Itot*R1,'W')],
+          ['P in R2', formatSI(Itot*Itot*R2,'W')]
+        ],
+        note:'Assumes an unloaded (open-circuit) output — loading the output with a downstream impedance will pull Vout down.'
+      });
+    }
+    compute();
+  }
+
+  /* ---------- 3. Resistor Network ---------- */
+  function buildNetwork(inputsCol, readoutCol){
+    var mode = 'series';
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Configuration</span>';
+    var seg = el('div', {class:'segmented'},
+      '<button type="button" data-mode="series" aria-pressed="true">Series</button>'+
+      '<button type="button" data-mode="parallel" aria-pressed="false">Parallel</button>');
+    card.appendChild(seg);
+    inputsCol.appendChild(card);
+    seg.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-mode]');
+      if (!btn) return;
+      mode = btn.getAttribute('data-mode');
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+      compute();
+    });
+
+    var card2 = el('div', {class:'card'});
+    card2.innerHTML = '<span class="card-label">Resistors</span>';
+    var rowsWrap = el('div', {class:'resistor-rows'});
+    card2.appendChild(rowsWrap);
+    var addBtn = el('button', {class:'btn', type:'button'}, '+ Add resistor');
+    card2.appendChild(addBtn);
+    inputsCol.appendChild(card2);
+
+    var count = 0;
+    function addRow(defaultVal){
+      count++;
+      var rid = 'res-'+count;
+      var row = el('div', {class:'resistor-row'});
+      var input = el('input', {type:'number', step:'any', inputmode:'decimal', id:rid, placeholder:'0', value: defaultVal||''});
+      var select = el('select', {id:rid+'-unit'}, unitOptions('R','Ω'));
+      var rm = el('button', {class:'btn-remove', type:'button', 'aria-label':'Remove resistor'}, '✕');
+      row.appendChild(input); row.appendChild(select); row.appendChild(rm);
+      rowsWrap.appendChild(row);
+      input.addEventListener('input', compute);
+      select.addEventListener('change', compute);
+      rm.addEventListener('click', function(){ row.remove(); compute(); });
+    }
+    addRow(220); addRow(470);
+    addBtn.addEventListener('click', function(){ addRow(''); });
+
+    function compute(){
+      var rows = Array.prototype.slice.call(rowsWrap.querySelectorAll('.resistor-row'));
+      var values = rows.map(function(r){
+        var input = r.querySelector('input');
+        var sel = r.querySelector('select');
+        var v = num(input);
+        return isFinite(v) ? v*unitScale(sel, UNITS.R) : NaN;
+      }).filter(function(v){ return isFinite(v) && v >= 0; });
+
+      var total;
+      if (values.length === 0) total = NaN;
+      else if (mode === 'series') total = values.reduce(function(a,b){ return a+b; }, 0);
+      else total = 1 / values.reduce(function(a,b){ return a + (b>0?1/b:0); }, 0);
+
+      var pieces = formatSI(total,'Ω').split(' ');
+      readout(readoutCol, {
+        label:'Total resistance',
+        primary: isFinite(total)?pieces[0]:'—',
+        unit: isFinite(total)?pieces[1]:'',
+        formula: mode==='series' ? 'Rₜ = R₁ + R₂ + …' : '1⁄Rₜ = 1⁄R₁ + 1⁄R₂ + …',
+        items: [['Resistors counted', String(values.length)]],
+        note: mode==='series' ? 'Series total is always larger than the biggest single resistor.' : 'Parallel total is always smaller than the smallest single resistor.'
+      });
+    }
+    compute();
+  }
+
+  /* ---------- 4. Reactance & Timing ---------- */
+  function buildReactance(inputsCol, readoutCol){
+    var sub = 'xc';
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Calculation</span>';
+    var seg = el('div', {class:'segmented'},
+      '<button type="button" data-sub="xc" aria-pressed="true">Xc</button>'+
+      '<button type="button" data-sub="xl" aria-pressed="false">XL</button>'+
+      '<button type="button" data-sub="res" aria-pressed="false">Resonance</button>'+
+      '<button type="button" data-sub="rc" aria-pressed="false">RC τ</button>');
+    card.appendChild(seg);
+    inputsCol.appendChild(card);
+
+    var card2 = el('div', {class:'card'});
+    inputsCol.appendChild(card2);
+
+    seg.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-sub]');
+      if (!btn) return;
+      sub = btn.getAttribute('data-sub');
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+      render();
+    });
+
+    function row(container, kind, id, labelText, unit){
+      var input = el('input', {type:'number', step:'any', inputmode:'decimal', id:id, placeholder:'0'});
+      var select = el('select', {id:id+'-unit'}, unitOptions(kind, unit));
+      var f = field(labelText, '');
+      f.querySelector('.field-row').appendChild(input);
+      f.querySelector('.field-row').appendChild(select);
+      input.addEventListener('input', compute);
+      select.addEventListener('change', compute);
+      container.appendChild(f);
+    }
+    function getVal(id, kind){
+      var v = num(document.getElementById(id));
+      var sel = document.getElementById(id+'-unit');
+      return isFinite(v) ? v*unitScale(sel, UNITS[kind]) : NaN;
+    }
+
+    function render(){
+      card2.innerHTML = '<span class="card-label">Values</span>';
+      if (sub==='xc'){ row(card2,'F','f','Frequency','kHz'); row(card2,'C','c','Capacitance','µF'); }
+      if (sub==='xl'){ row(card2,'F','f2','Frequency','kHz'); row(card2,'L','l','Inductance','mH'); }
+      if (sub==='res'){ row(card2,'L','l2','Inductance','mH'); row(card2,'C','c2','Capacitance','µF'); }
+      if (sub==='rc'){ row(card2,'R','r','Resistance','kΩ'); row(card2,'C','c3','Capacitance','µF'); }
+      compute();
+    }
+
+    function compute(){
+      if (sub==='xc'){
+        var f=getVal('f','F'), C=getVal('c','C');
+        var Xc = 1/(2*Math.PI*f*C);
+        var p = formatSI(Xc,'Ω').split(' ');
+        readout(readoutCol,{label:'Capacitive reactance', primary:isFinite(Xc)?p[0]:'—', unit:isFinite(Xc)?p[1]:'', formula:'Xc = 1 ÷ (2πfC)', note:'Reactance falls as frequency rises — a capacitor looks like a short at high frequency and an open at DC.'});
+      } else if (sub==='xl'){
+        var f2=getVal('f2','F'), L=getVal('l','L');
+        var Xl = 2*Math.PI*f2*L;
+        var p2 = formatSI(Xl,'Ω').split(' ');
+        readout(readoutCol,{label:'Inductive reactance', primary:isFinite(Xl)?p2[0]:'—', unit:isFinite(Xl)?p2[1]:'', formula:'XL = 2πfL', note:'Reactance rises with frequency — an inductor looks like an open at high frequency and a short at DC.'});
+      } else if (sub==='res'){
+        var L2=getVal('l2','L'), C2=getVal('c2','C');
+        var fr = 1/(2*Math.PI*Math.sqrt(L2*C2));
+        var p3 = formatSI(fr,'Hz').split(' ');
+        readout(readoutCol,{label:'Resonant frequency', primary:isFinite(fr)?p3[0]:'—', unit:isFinite(fr)?p3[1]:'', formula:'f = 1 ÷ (2π√(LC))', note:'The frequency at which inductive and capacitive reactance cancel in an LC circuit.'});
+      } else {
+        var R=getVal('r','R'), C3=getVal('c3','C');
+        var tau = R*C3;
+        var p4 = formatSI(tau,'s').split(' ');
+        readout(readoutCol,{label:'Time constant τ', primary:isFinite(tau)?p4[0]:'—', unit:isFinite(tau)?p4[1]:'', formula:'τ = R × C', items:[['To ~63%', formatSI(tau,'s')],['To ~99% (5τ)', formatSI(tau*5,'s')]], note:'One time constant charges a capacitor to about 63% of the applied step voltage; five time constants is effectively fully settled.'});
+      }
+    }
+    render();
+  }
+
+  /* ---------- 5. Three-Phase Power ---------- */
+  function buildThreePhase(inputsCol, readoutCol){
+    var config = 'wye';
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Configuration</span>';
+    var seg = el('div', {class:'segmented'},
+      '<button type="button" data-cfg="wye" aria-pressed="true">Star (Wye)</button>'+
+      '<button type="button" data-cfg="delta" aria-pressed="false">Delta</button>');
+    card.appendChild(seg);
+    inputsCol.appendChild(card);
+    seg.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-cfg]');
+      if (!btn) return;
+      config = btn.getAttribute('data-cfg');
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+      compute();
+    });
+
+    var card2 = el('div', {class:'card'});
+    card2.innerHTML = '<span class="card-label">Line values</span>';
+    inputsCol.appendChild(card2);
+
+    function row(container, kind, id, labelText, unit){
+      var input = el('input', {type:'number', step:'any', inputmode:'decimal', id:id, placeholder:'0'});
+      var select = el('select', {id:id+'-unit'}, unitOptions(kind, unit));
+      var f = field(labelText, '');
+      f.querySelector('.field-row').appendChild(input);
+      f.querySelector('.field-row').appendChild(select);
+      input.addEventListener('input', compute);
+      select.addEventListener('change', compute);
+      container.appendChild(f);
+    }
+    row(card2,'V','vl','Line-to-line voltage','V');
+    row(card2,'I','il','Line current','A');
+
+    var pfField = field('Power factor (0–1)', '');
+    var pfInput = el('input', {type:'number', step:'0.01', min:'0', max:'1', id:'pf', value:'1', placeholder:'1'});
+    pfField.querySelector('.field-row').appendChild(pfInput);
+    card2.appendChild(pfField);
+    pfInput.addEventListener('input', compute);
+
+    function getVal(id, kind){
+      var v = num(document.getElementById(id));
+      var sel = document.getElementById(id+'-unit');
+      return isFinite(v) ? v*unitScale(sel, UNITS[kind]) : NaN;
+    }
+
+    function compute(){
+      var Vl = getVal('vl','V'), Il = getVal('il','I');
+      var pf = num(pfInput); if (!isFinite(pf)) pf = 1;
+      var S = Math.sqrt(3) * Vl * Il;
+      var P = S * pf;
+      var Q = S * Math.sin(Math.acos(Math.min(Math.max(pf,-1),1)));
+      var Vphase = config==='wye' ? Vl/Math.sqrt(3) : Vl;
+      var Iphase = config==='wye' ? Il : Il/Math.sqrt(3);
+
+      var p = formatSI(P,'W').split(' ');
+      readout(readoutCol, {
+        label:'Real power',
+        primary:isFinite(P)?p[0]:'—',
+        unit:isFinite(P)?p[1]:'',
+        formula:'P = √3 × V_L × I_L × PF',
+        items:[
+          ['Apparent power', formatSI(S,'VA')],
+          ['Reactive power', formatSI(Q,'VAR')],
+          ['Phase voltage', formatSI(Vphase,'V')],
+          ['Phase current', formatSI(Iphase,'A')]
+        ],
+        note:'Assumes a balanced three-phase load. Star (wye) divides line voltage by √3 to get phase voltage; delta divides line current by √3 to get phase current.'
+      });
+    }
+    compute();
+  }
+
+  /* ---------- 6. Resistor Color Code ---------- */
+  var DIGIT_COLORS = [
+    ['black','#1c1c1c',0],['brown','#7a4a2b',1],['red','#c23b32',2],['orange','#d97f2e',3],
+    ['yellow','#e0c22e',4],['green','#3f8f5f',5],['blue','#3a6ea8',6],['violet','#7a5fb0',7],
+    ['grey','#8a8a86',8],['white','#f2f0e8',9]
+  ];
+  var MULT_COLORS = [
+    ['black','#1c1c1c',1],['brown','#7a4a2b',10],['red','#c23b32',100],['orange','#d97f2e',1000],
+    ['yellow','#e0c22e',10000],['green','#3f8f5f',100000],['blue','#3a6ea8',1000000],
+    ['gold','#c9a13b',0.1],['silver','#b9bcc0',0.01]
+  ];
+  var TOL_COLORS = [
+    ['brown','#7a4a2b',1],['red','#c23b32',2],['green','#3f8f5f',0.5],['blue','#3a6ea8',0.25],
+    ['gold','#c9a13b',5],['silver','#b9bcc0',10]
+  ];
+  function colorOptions(list, selectedName){
+    return list.map(function(c){
+      return '<option value="'+c[0]+'"'+(c[0]===selectedName?' selected':'')+'>'+c[0].charAt(0).toUpperCase()+c[0].slice(1)+'</option>';
+    }).join('');
+  }
+  function findColor(list, name){ return list.filter(function(c){ return c[0]===name; })[0]; }
+
+  function buildColorCode(inputsCol, readoutCol){
+    var bands = 4;
+    var card = el('div', {class:'card'});
+    card.innerHTML = '<span class="card-label">Band count</span>';
+    var seg = el('div', {class:'segmented'},
+      '<button type="button" data-bands="4" aria-pressed="true">4-band</button>'+
+      '<button type="button" data-bands="5" aria-pressed="false">5-band</button>');
+    card.appendChild(seg);
+    inputsCol.appendChild(card);
+
+    var figCard = el('div', {class:'card'});
+    var fig = el('div', {class:'resistor-fig'});
+    figCard.appendChild(fig);
+    inputsCol.appendChild(figCard);
+
+    var card2 = el('div', {class:'card'});
+    card2.innerHTML = '<span class="card-label">Bands (left to right)</span>';
+    var picker = el('div', {class:'band-picker'});
+    card2.appendChild(picker);
+    inputsCol.appendChild(card2);
+
+    seg.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-bands]');
+      if (!btn) return;
+      bands = parseInt(btn.getAttribute('data-bands'),10);
+      seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+      render();
+    });
+
+    function makeBandField(labelText, list, defaultName, onChange){
+      var f = el('div', {class:'band-field'});
+      var swatch = el('span', {class:'swatch'});
+      swatch.style.background = findColor(list, defaultName)[1];
+      var label = el('label', {}, labelText);
+      var select = el('select', {}, colorOptions(list, defaultName));
+      select.addEventListener('change', function(){
+        swatch.style.background = findColor(list, select.value)[1];
+        onChange();
+      });
+      f.appendChild(swatch); f.appendChild(label); f.appendChild(select);
+      f._select = select;
+      return f;
+    }
+
+    var fields = {};
+    function render(){
+      picker.innerHTML = '';
+      fields = {};
+      fields.d1 = makeBandField('Digit 1', DIGIT_COLORS, 'brown', compute);
+      fields.d2 = makeBandField('Digit 2', DIGIT_COLORS, 'black', compute);
+      picker.appendChild(fields.d1); picker.appendChild(fields.d2);
+      if (bands === 5){
+        fields.d3 = makeBandField('Digit 3', DIGIT_COLORS, 'black', compute);
+        picker.appendChild(fields.d3);
+      }
+      fields.mult = makeBandField('Multiplier', MULT_COLORS, 'red', compute);
+      fields.tol = makeBandField('Tolerance', TOL_COLORS, 'gold', compute);
+      picker.appendChild(fields.mult); picker.appendChild(fields.tol);
+      compute();
+    }
+
+    function drawResistor(){
+      var colors = [
+        findColor(DIGIT_COLORS, fields.d1._select.value)[1],
+        findColor(DIGIT_COLORS, fields.d2._select.value)[1]
+      ];
+      if (bands===5) colors.push(findColor(DIGIT_COLORS, fields.d3._select.value)[1]);
+      colors.push(findColor(MULT_COLORS, fields.mult._select.value)[1]);
+      var tolColor = findColor(TOL_COLORS, fields.tol._select.value)[1];
+
+      var bodyFill = 'var(--ink-muted)';
+      var xs = bands===5 ? [70,92,114,136,190] : [78,104,130,190];
+      var svg = '<svg viewBox="0 0 280 70" role="img" aria-label="Resistor with '+bands+' color bands">'+
+        '<line x1="0" y1="35" x2="60" y2="35" stroke="currentColor" stroke-width="3" opacity="0.5"/>'+
+        '<line x1="220" y1="35" x2="280" y2="35" stroke="currentColor" stroke-width="3" opacity="0.5"/>'+
+        '<rect x="60" y="14" width="160" height="42" rx="12" fill="#d9c9a3"/>';
+      colors.forEach(function(c, i){
+        svg += '<rect x="'+xs[i]+'" y="14" width="10" height="42" fill="'+c+'"/>';
+      });
+      svg += '<rect x="'+(bands===5?214:214)+'" y="14" width="10" height="42" fill="'+tolColor+'"/>';
+      svg += '</svg>';
+      fig.innerHTML = svg;
+      fig.style.color = 'var(--ink-muted)';
+    }
+
+    function compute(){
+      drawResistor();
+      var d1 = findColor(DIGIT_COLORS, fields.d1._select.value)[2];
+      var d2 = findColor(DIGIT_COLORS, fields.d2._select.value)[2];
+      var digits = bands===5 ? (d1*100 + d2*10 + findColor(DIGIT_COLORS, fields.d3._select.value)[2]) : (d1*10 + d2);
+      var mult = findColor(MULT_COLORS, fields.mult._select.value)[2];
+      var tol = findColor(TOL_COLORS, fields.tol._select.value)[2];
+      var value = digits * mult;
+      var p = formatSI(value,'Ω').split(' ');
+      var low = value*(1-tol/100), high = value*(1+tol/100);
+      readout(readoutCol, {
+        label:'Resistance',
+        primary:p[0], unit:p[1],
+        formula: bands===5 ? 'R = (100d₁+10d₂+d₃) × multiplier' : 'R = (10d₁+d₂) × multiplier',
+        items:[
+          ['Tolerance', '±'+tol+'%'],
+          ['Range', formatSI(low,'Ω')+' – '+formatSI(high,'Ω')]
+        ],
+        note:'Pick each band’s color left to right, in the order printed on the resistor body, starting from the band closest to one end.'
+      });
+    }
+    render();
+  }
+
+  /* ---------------- Boot ---------------- */
+  var startTool = 'ohm';
+  try { var saved = localStorage.getItem('cb-tool'); if (saved) startTool = saved; } catch(e){}
+  if (!TOOLS.some(function(t){ return t.id===startTool; })) startTool = 'ohm';
+  selectTool(startTool);
+})();
+</script>
